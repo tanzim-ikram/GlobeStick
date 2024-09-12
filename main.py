@@ -11,48 +11,82 @@ ser = serial.Serial(arduino_port, baud_rate)
 time.sleep(2)  # Wait for the connection to be established
 
 
-def map_value(value, in_min, in_max, out_min, out_max):
-    """Map a value from one range to another."""
-    return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-
 def process_joystick_data(x, y, sw):
-    """Translate joystick data to Google Earth Pro control actions."""
-    # Mapping joystick values to mouse or keyboard actions
-    x_mapped = map_value(x, 0, 1023, -10, 10)  # Adjust range for sensitivity
-    y_mapped = map_value(y, 0, 1023, -10, 10)
+    """Translate joystick data to Google Earth Pro control actions using raw values and print actions."""
+    # Dead zone thresholds (adjust based on your joystick's central values)
+    DEAD_ZONE_MIN = 600
+    DEAD_ZONE_MAX = 600
 
-    # Move Google Earth Pro view with the joystick
-    if x_mapped > 2:
-        pyautogui.keyDown('right')  # Move right
-    elif x_mapped < -2:
-        pyautogui.keyDown('left')  # Move left
-    else:
-        pyautogui.keyUp('right')
-        pyautogui.keyUp('left')
+    # action_taken = "None"  # Variable to keep track of action taken
 
-    if y_mapped > 2:
-        pyautogui.keyDown('up')  # Move up
-    elif y_mapped < -2:
-        pyautogui.keyDown('down')  # Move down
-    else:
-        pyautogui.keyUp('up')
-        pyautogui.keyUp('down')
+    # Move Google Earth Pro view with the joystick if outside dead zone
+    if x < 500:  # Left movement
+        # pyautogui.press('up')
+        pyautogui.keyDown('up')
+        # pyautogui.keyUp('down')
+        # action_taken = "Moving Up"
+
+        # pyautogui.keyDown('left')
+        # pyautogui.keyUp('right')
+        # action_taken = "Moving Left"
+    elif x > 600:  # Right movement
+        # pyautogui.press('down')
+        pyautogui.keyDown('down')
+        # pyautogui.keyUp('up')
+        # action_taken = "Moving Down"
+
+        # pyautogui.keyDown('right')
+        # pyautogui.keyUp('left')
+        # action_taken = "Moving Right"
+    # else:
+    #     # pyautogui.keyUp('left')
+    #     # pyautogui.keyUp('right')
+    #     pyautogui.keyUp('up')
+    #     pyautogui.keyUp('down')
+
+    if 580 < y < 800:  # Up movement
+        # pyautogui.press('left')
+        pyautogui.keyDown('left')
+        # pyautogui.keyUp('right')
+        # action_taken = "Moving Left"
+
+        # pyautogui.keyDown('up')
+        # pyautogui.keyUp('down')
+        # action_taken = "Moving Up"
+    elif 450 > y > 250:  # Down movement
+        # pyautogui.press('right')
+        pyautogui.keyDown('right')
+        # pyautogui.keyUp('left')
+        # action_taken = "Moving Right"
+
+        # pyautogui.keyDown('down')
+        # pyautogui.keyUp('up')
+        # action_taken = "Moving Down"
+    # else:
+        # pyautogui.keyUp('left')
+        # pyautogui.keyUp('right')
 
     # If the joystick button is pressed, reset the view
     if sw == 0:  # Button press (LOW)
         pyautogui.press('r')  # Example action: 'r' key resets view
 
+    # Print the joystick values and action taken
+    # print(f"x: {x}, y: {y}, sw: {sw} => Action: {action_taken}")
+
+
 try:
     while True:
         # Read data from Arduino
-        data = ser.readline().decode('utf-8').strip()
-        if data:
-            # Split data from Arduino (x_data, y_data, sw_data)
-            x_data, y_data, sw_data = map(int, data.split(','))
+        data = ser.readline().decode('utf-8', errors='ignore').strip()  # Ignore any decode errors
 
-            # Process joystick data and control Google Earth Pro
-            process_joystick_data(x_data, y_data, sw_data)
+        if data:
+            # Ensure the data is in the expected format and handle errors
+            try:
+                x_data, y_data, sw_data = map(int, data.split(','))
+                # Process joystick data and control Google Earth Pro
+                process_joystick_data(x_data, y_data, sw_data)
+            except ValueError:
+                print(f"Received malformed data: {data}")  # Print malformed data for debugging
 
 except KeyboardInterrupt:
     print("Program interrupted by user.")
